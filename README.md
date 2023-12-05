@@ -1,26 +1,39 @@
 # video-semantic-search
 Video semantic search tool
 
-Requirements: Python >= 3.9, conda, CUDA 12.1
-
-Only tested on Ubuntu linux-64 with CUDA 12.1, and WSL Ubuntu with CUDA 12.1
+Requirements: Python >= 3.9, conda, CUDA 11.* or 12.*
+It depends on an external server (of your choosing) running Whisper or Vicuna.
 
 Run install.sh
 ```
 sh install.sh
 ```
-This will create a Python virtual environment using conda.
+This will create a Python virtual environment and install requirements.
+
+Add the .env variables as follows:
+
+frontend
+```
+API_ENDPOINT=http://127.0.0.1:5000
+LAVIS_API_ENDPOINT=http://127.0.0.1:5002
+```
+
+search-api
+```
+WHISPER_API_ENDPOINT="your whisper api endpoint"
+VICUNA_API_ENDPOINT="your vicuna api endpoint"
+LAVIS_API_ENDPOINT=http://127.0.0.1:5002
+```
 
 Then run all servers:
 ```
-sh run_frontend_api.sh
-sh run_search_api.sh
-sh run_whisper_x_api.sh
-sh run_lavis_api.sh
+./run_frontend_api.sh
+./run_search_api.sh
+./run_lavis_api.sh
 ```
 
-search_api server runs on GPU, modest VRAM usage.
-whisper_x server runs on GPU, modest VRAM usage.
-Warning: lavis_api server runs on CPU, requires A LOT of RAM (around 16GB).
+search_api server can run on GPU, modest VRAM usage.
+Warning: lavis-api server requires A LOT of RAM (around 16GB).
 
-whisper_x and lavis_api servers are required only when processing videos. The search function only requires the search_api server.
+lavis-api and Whisper are required only when processing videos. Vicuna is required when processing video and for the image description function.
+The search function only requires the search-api server.
