@@ -6,8 +6,8 @@ global device
 global model
 global vis_processors
 try:
-    #device = "cuda" if torch.cuda.is_available() else "cpu"
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    #device = "cpu"
     model, vis_processors, _ = load_model_and_preprocess(
         name="blip2_vicuna_instruct",
     model_type="vicuna7b",
