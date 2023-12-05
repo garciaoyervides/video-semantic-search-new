@@ -16,6 +16,6 @@ else
     exit $1
 fi
 
-$CWD/venv/bin/python pip install -r requirements.txt
+pip install -r requirements.txt
 
 echo "Virtual  Environment successfully installed, now you can start the servers."

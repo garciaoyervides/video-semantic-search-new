@@ -4,12 +4,21 @@ Video semantic search tool
 Requirements: Python >= 3.9, conda, CUDA 11.* or 12.*
 It depends on an external server (of your choosing) running Whisper or Vicuna.
 
-Run install.sh
+## Install
+OPTION 1: Run install.sh
 ```
 sh install.sh
 ```
 This will create a Python virtual environment and install requirements.
 
+OPTION 2: Create a python virtual environment at:
+```
+video-semantic-search-new/venv
+```
+Install Pytorch.
+Install requirements.txt with pip.
+
+## Configure
 Add the .env variables as follows:
 
 frontend
@@ -24,7 +33,7 @@ WHISPER_API_ENDPOINT="your whisper api endpoint"
 VICUNA_API_ENDPOINT="your vicuna api endpoint"
 LAVIS_API_ENDPOINT=http://127.0.0.1:5002
 ```
-
+## Run
 Then run all servers:
 ```
 ./run_frontend_api.sh
