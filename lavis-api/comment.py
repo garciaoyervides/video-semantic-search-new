@@ -6,7 +6,7 @@ from moviepy.editor import VideoFileClip
 import numpy as np
 
 def get_comment(image, prompt="None",nucleus_sampling='False',temperature=0.2,top_percent=0.9):
-    '''
+    
     p_image = data.vis_processors["eval"](image).unsqueeze(0).to(data.device)
     if nucleus_sampling == "True":
         use_nucleus_sampling = True
@@ -23,8 +23,6 @@ def get_comment(image, prompt="None",nucleus_sampling='False',temperature=0.2,to
                                 top_p=float(top_percent),
                                 temperature=float(temperature))
     return response[0]
-    '''
-    return "A polar bear under the snow."
 
 def clip_video(video_path, time, file_name):
     start_time = int(time[0]) / 100

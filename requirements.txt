@@ -1,0 +1,14 @@
+streamlit
+ftfy
+regex
+tqdm
+Cython
+clip @ git+https://github.com/openai/CLIP.git
+cpd_nonlin @ git+https://github.com/TatsuyaShirakawa/KTS.git
+lavis @ git+https://github.com/garciaoyervides/LAVIS.git
+scikit-learn
+moviepy
+yellowbrick
+chromadb
+openai
+transformers==4.31.0

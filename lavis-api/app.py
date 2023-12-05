@@ -51,6 +51,7 @@ def describe_single_image():
                                            nucleus_sampling=nucleus_sampling,
                                            temperature=temperature,
                                            top_percent=top_percent)
+        #print(f"{file.filename} {response['description']}")
         return jsonify(response)
 
 @app.route("/timing", methods=['POST'])
