@@ -13,7 +13,10 @@ import cv2
 import os
 import requests
 import io
+import csv
 from cpd_nonlin import cpd_nonlin
+import shutil 
+import ollama
 
 def scenes_listing(binary_tags):
     start = 0
@@ -178,14 +181,17 @@ def extract_features_from_text(text):
 
 def translate(text):
     if text != "":
-        response = data.vicuna_client.chat.completions.create(
-            model=data.LLM,
-            messages=[
-                {"role": "system", "content": "Translate the following text to English"},
-                {"role": "user", "content": text}
-                ],
-            max_tokens=data.MAX_TOKENS
-        )
+        try:
+            response = data.vicuna_client.chat.completions.create(
+                model=data.LLM,
+                messages=[
+                    {"role": "system", "content": "Translate the following text to English"},
+                    {"role": "user", "content": text}
+                    ],
+                max_tokens=data.MAX_TOKENS
+            )
+        except:
+            return ""
         return response.choices[0].message.content
     else:
         return ""
@@ -205,14 +211,20 @@ def get_transcript_segments(video, video_language):
         'word_timestamps':True
     }
     response = requests.post(f"{data.WHISPER_API_ENDPOINT}/transcribe",files=files,data=options)
+    transcript_segments = []
     if response.status_code == 200:
         result = response.json()
-        transcript_segments = []
-        for seg in result['segments']:
+        for seg in result:
+            if video_language == "en":
+                translation = seg['text']
+            else:
+                translation = translate(seg['text'])
+
             transcript_segments.append({
                 'start':int(seg['start']*100),
                 'end':int(seg['end']*100),
                 'text':seg['text'],
+                'translation':translation
             })
     return transcript_segments
 
@@ -225,17 +237,20 @@ def is_between(period_a,period_b):
         return True
     return False
 
-def match_segmentation(segmentation,transcript_segments,video_language):
+def match_segmentation(segmentation,transcript_segments):
     for segment in segmentation:
         text = ""
+        translation = ""
         for t_seg in transcript_segments:
             if is_between((segment['start'],segment['end']),(t_seg['start'],t_seg['end'])):
                 text = f"{text} {t_seg['text']}"
+                translation = f"{text} {t_seg['translation']}"
         segment['original transcript'] = text
-        if video_language == "en":
-            segment['translated transcript'] = segment['original transcript']
-        else:
-            segment['translated transcript'] = translate(segment['original transcript'])
+        segment['translated transcript'] = translation
+        #if video_language == "en":
+        #    segment['translated transcript'] = segment['original transcript']
+        #else:
+        #    segment['translated transcript'] = translate(segment['original transcript'])
             #segment['translated transcript'] = segment['original transcript']
     return segmentation
 
@@ -258,15 +273,31 @@ def get_last_video_image_files():
     return im_time
 
 def summarize_descriptions(text):
-    response = data.vicuna_client.chat.completions.create(
-        model=data.LLM,
-        messages=[
-            {"role": "system", "content": "Summarize the following descriptions, remove similar descriptions. Make it one sentence long."},
-            {"role": "user", "content": text}
-            ],
-        max_tokens=data.MAX_TOKENS
-    )
-    return response.choices[0].message.content
+    try:
+        response = data.vicuna_client.chat.completions.create(
+            model=data.LLM,
+            messages=[
+                {"role": "system", "content": "Summarize the following descriptions, remove similar descriptions. Make it one sentence long."},
+                {"role": "user", "content": text}
+                ],
+            max_tokens=data.MAX_TOKENS
+        )
+        return response.choices[0].message.content
+    except:
+        return ""
+    
+    #try:
+    #    response = data.vicuna_client.chat(
+    #        model=data.LLM,
+    #        messages=[
+    #        {"role": "system", "content": "Summarize the following descriptions, remove similar descriptions. Make it one sentence long."},
+    #        {"role": "user", "content": text}  
+    #        ]
+    #    )
+    #    return response['message']['content']
+    #except ollama.ResponseError as e:
+    #    print('Error: ',e.error)
+    #    return ""
 
 def detect_objects(segmentation,threshold=0.5):
     
@@ -296,6 +327,7 @@ def get_description(segmentation):
     im_time = get_last_video_image_files()
     for seg in segmentation:
         descriptions = []
+        images_filenames = []
         images_list = get_range(im_time,seg['start'],seg['end'])
         images_list = list(map(lambda x: './tmp/img/'+x,images_list))
         for i,im in enumerate(images_list):
@@ -311,18 +343,62 @@ def get_description(segmentation):
                 res = response.json()
                 if res['description']:
                     descriptions.append(res['description'])
+                    images_filenames.append(im)
             else:
                 descriptions.append("")
+                images_filenames.append("")
         if descriptions:
             seg['description'] = summarize_descriptions('// '.join(map(str, descriptions)))
             #seg['description'] = ''
+            #seg['images-descriptions'] = ''.join(map(str, list(zip(images_filenames,descriptions))))
+            im_desc=[]
+            for i,_ in enumerate(images_filenames):
+                im_desc.append({
+                    'image_filename':images_filenames[i],
+                    'description':descriptions[i]
+                })
+                #seg['images-descriptions'] = f'{i}//{images_filenames[i]}//{descriptions[i]}'
+            seg['images-descriptions'] = im_desc
         else:
             seg['description'] = ''
+            seg['images-descriptions'] = []
     return segmentation
 
+def write_eval_data(video_name,transcript_segments,segmentation):
+    if not os.path.exists('./eval'):
+        os.makedirs(f'./eval')
+    if os.path.exists(f'./eval/{video_name}'):
+        for file in os.listdir(f'./eval/{video_name}'):
+            if os.path.isfile(f'./eval/{video_name}/{file}'):
+                os.remove(f'./eval/{video_name}/{file}')
+    else:
+        os.makedirs(f'./eval/{video_name}')
+    #transcript
+    keys = transcript_segments[0].keys()
+    with open(f'./eval/{video_name}/transcript.csv', 'w+', newline='') as output_file:
+        dict_writer = csv.DictWriter(output_file, keys, delimiter='|')
+        dict_writer.writeheader()
+        dict_writer.writerows(transcript_segments)
+    #image descriptions
+    descriptions = []
+    for seg in segmentation:
+        #descriptions.append(seg['images-descriptions'])
+        descriptions = descriptions + seg['images-descriptions']
+    keys = descriptions[0].keys()
+    with open(f'./eval/{video_name}/descriptions.csv', 'w+') as output_file:
+        dict_writer = csv.DictWriter(output_file, keys, delimiter='|')
+        dict_writer.writeheader()
+        dict_writer.writerows(descriptions)
+    #copy all image files
+    src_dir = './tmp/img/'
+    dst_dir = f'./eval/{video_name}'
+    for file in os.listdir(src_dir):
+        if file.endswith(".jpg"):
+            shutil.copy(f'{src_dir}/{file}',dst_dir)
 
 def process_video_to_db(video_name,video_language):
     write_to_log(f"{video_name} is starting segmentation")
+    print(f"{video_name} is starting segmentation")
     #get image features
     image_features, time = process_video_keyframes(video_name)
     image_features_torch = torch.FloatTensor(image_features).to(data.device)
@@ -357,11 +433,16 @@ def process_video_to_db(video_name,video_language):
             scene_image_features.append(mean.tolist()[0])
 
         write_to_log(f"{video_name} segmentation done successfully")
-
+        print(f"{video_name} segmentation done successfully")
         #save transcripts
         write_to_log(f"{video_name} is starting transcription")
+        print(f"{video_name} is starting transcription")
         transcript_segments = get_transcript_segments(f'./videos/{video_name}',video_language)
-        segmentation = match_segmentation(segmentation,transcript_segments,video_language)
+        if len(transcript_segments) == 0:
+            write_to_log(f"Transcript was not successful. Maybe the Whisper API is not working?")
+            print(f"Transcript was not successful. Maybe the Whisper API is not working?")
+            os.remove(f'./videos/{video_name}')
+        segmentation = match_segmentation(segmentation,transcript_segments)
         scene_transcript_features = []
         for seg in segmentation:
             if seg['translated transcript'] != "":
@@ -370,7 +451,7 @@ def process_video_to_db(video_name,video_language):
                 scene_transcript_features.append(None)
             
         write_to_log(f"{video_name} transcription done successfully")
-
+        print(f"{video_name} transcription done successfully")
         #save detected objects (YOLO)
         #write_to_log(f"{video_name} is starting object detection")
         #segmentation = detect_objects(segmentation)
@@ -378,6 +459,7 @@ def process_video_to_db(video_name,video_language):
 
         #save secondary description (LAVIS)
         write_to_log(f"{video_name} is starting description")
+        print(f"{video_name} is starting description")
         segmentation = get_description(segmentation)
         scene_description_features = []
         for seg in segmentation:
@@ -386,7 +468,7 @@ def process_video_to_db(video_name,video_language):
             else:
                 scene_description_features.append(None)
         write_to_log(f"{video_name} description done successfully")
-
+        print(f"{video_name} description done successfully")
         #Save to DB
         metadata = {
             "video name":video_name,
@@ -395,15 +477,24 @@ def process_video_to_db(video_name,video_language):
             "segmentation":json.dumps(segmentation),
             "image features":json.dumps(scene_image_features),
             "transcript features":json.dumps(scene_transcript_features),
-            "description features":json.dumps(scene_description_features)
+            "description features":json.dumps(scene_description_features),
+            #more data
         }
+        
         add_or_update_video(video_name,metadata)
 
+        ##Now for the Eval data
+        write_eval_data(video_name,transcript_segments,segmentation)
+
         write_to_log(f"{video_name} was uploaded successfully")
+        print(f"{video_name} was uploaded successfully")
         #####
         write_to_log(f"Generating index")
+        print(f"Generating index")
         create_segments_indexes(video_name)
         write_to_log(f"{video_name} was processed successfully")
+        print(f"{video_name} was processed successfully")
     else:
         write_to_log(f"{video_name} was not processed successfully, video is too short")
+        print(f"{video_name} was not processed successfully, video is too short")
         os.remove(f'./videos/{video_name}')

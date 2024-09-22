@@ -64,6 +64,7 @@ def get_video(id):
     data = videos_collection.get(ids=[str(id)],include=["metadatas"])
     return data['metadatas'][0]
 
+'''''
 def query_segments(embeddings, index='All', k='10'):
     if index == 'All':
         results = segments_collection.query(
@@ -79,7 +80,16 @@ def query_segments(embeddings, index='All', k='10'):
                 include=['metadatas','distances']
             )
     return results
+'''''
 
+def query_segments(embeddings, index='Images', k='10'):
+    results = segments_collection.query(
+            query_embeddings=embeddings,
+            n_results=k,
+            where={'index':index},
+            include=['metadatas','distances']
+        )
+    return results
 
 def get_video_list():
     data = videos_collection.get(include=["metadatas"])

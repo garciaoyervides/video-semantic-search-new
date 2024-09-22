@@ -1,14 +1,16 @@
+cython
+numpy
 streamlit
 ftfy
+flask
 regex
 tqdm
-Cython
 clip @ git+https://github.com/openai/CLIP.git
-cpd_nonlin @ git+https://github.com/TatsuyaShirakawa/KTS.git
-lavis @ git+https://github.com/garciaoyervides/LAVIS.git
+#cpd_nonlin @ git+https://github.com/TatsuyaShirakawa/KTS.git
+salesforce-lavis @ git+https://github.com/garciaoyervides/LAVIS.git
 scikit-learn
 moviepy
 yellowbrick
-chromadb
+chromadb @ git+https://github.com/garciaoyervides/chroma.git
 openai
 transformers==4.31.0

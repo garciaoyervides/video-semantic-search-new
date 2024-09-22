@@ -43,12 +43,76 @@ def extract_features_from_image(search_image):
         features = torch.nn.functional.normalize(features,dim=1)
     return features.tolist()
 
-def search_scene(input,k=10,index="Images",input_type="Text"):
+def reciprocal_rank_fusion(results_list,k):
+    ids = []
+    distances = []
+    metadatas = []
+    rrf = []
+    #Homologue all ids by removing the index it belongs to
+    for results in results_list:
+        #print(results['ids'][0])
+        results['ids'][0] = [x.replace('Descriptions ','') for x in results['ids'][0]]
+        results['ids'][0] = [x.replace('Images ','') for x in results['ids'][0]]
+        results['ids'][0] = [x.replace('Transcripts ','') for x in results['ids'][0]]
+    for results in results_list:
+        #print(results['ids'][0])
+        for i,id in enumerate(results['ids'][0]):
+            if id not in ids:
+                ids.append(id)
+                distances.append(results['distances'][0][i])
+                metadatas.append(results['metadatas'][0][i])
+    #print(ids)
+    #print(distances)
+    #print(metadatas)
+    rankings = {}
+    for id in ids:
+        rankings[id] = []
+        for results in results_list:
+            #print(id)
+            #print(results['ids'][0])
+            try:
+                #print(results['ids'][0].index(id))
+                rankings[id].append(results['ids'][0].index(id) + 1)
+            except:
+                rankings[id].append(0)
+    #print(rankings)
+    k_param = 60 #the standard number for this parameter
+    for id in ids:
+        rrf_sum = 0
+        for r in rankings[id]:
+            #print(f'{id} ranking: {r}')
+            if r > 0:
+                rrf_sum = rrf_sum + 1/(r+k_param)
+        rrf.append(rrf_sum)
+        #rrf.append(sum([1/(x+k) for x in rankings[id]]))
+    #print(rrf)
+    zipped = zip(ids,rrf,distances,metadatas)
+    sorted_zipped = sorted(zipped, key = lambda x: x[1],reverse=True)
+    ids,rrf,distances,metadatas = zip(*sorted_zipped)
+    results = {}
+    results['ids']=[list(ids)[:k]]
+    results['rrf']=[list(rrf)[:k]]
+    results['distances']=[list(distances)[:k]]
+    results['metadatas']=[list(metadatas)[:k]]
+    #print(results)
+    return results
+
+def search_scene(input,k=10,index=["Images"],input_type="Text"):
     if input_type == "Text":
         features = extract_features_from_text(input)[0]
     if input_type == "Image":
         features = extract_features_from_image(input)[0]
-    results = query_segments(features,index=index,k=k)
+    #print(index)
+    if len(index) == 1:
+        results = query_segments(features,index=index[0],k=k)
+        #results['rrf'] = []
+    else:
+        ## using reciperocal rank fusion to mix the results of searching various indexes
+        results_list = []
+        for i in index:
+            results_list.append(query_segments(features,index=i,k=k))
+        #print(results_list)
+        results = reciprocal_rank_fusion(results_list,k)
     return results
 
 def clip_video(video_name, time, file_name):

@@ -4,6 +4,7 @@ import requests
 import base64
 import io
 import time
+import json
 import os
 from utils import parse_script, parse_comment, get_video_image_sequence
 from config import API_ENDPOINT, LAVIS_API_ENDPOINT
@@ -66,23 +67,24 @@ with tab2:
         search_uploaded_file = st.file_uploader("Choose an image file", help="Use a high quality picture", key="Search Upload Image Button", type=['jpg','jpeg','png','bmp'])
         if search_uploaded_file:
             st.image(search_uploaded_file)
-    search_results = st.slider('Amount of results', 1, 10, 1)
-    #search_expand_treshold = st.slider('Expand Treshold', 0.0, 1.0, 0.05)
-    search_index = st.selectbox(
+    search_results = st.slider('Amount of results', 1, 20, 1)
+    search_index = st.multiselect(
         'Index to query',
         ('Images','Transcripts','Descriptions'),
-        help="Images: Matches search phrase with visual data. Transcripts: Matches search phrase with audio spoken in the video.",
+        help="Images: Matches query with visual data. Transcripts: Matches query with audio spoken in the video. Descriptions: Matches query with generated video descriptions.",
         key="index_search")
     if st.button('Search', key="Search Video Button", disabled=
                  ((search_type == "Text" and search_term == "") or
-                  (search_type == "Image" and search_uploaded_file is None))):
+                  (search_type == "Image" and search_uploaded_file is None) or
+                  (len(search_index) == 0))):
         with st.spinner('Searching...'):
             if search_type == "Text":
                 response = requests.post(f"{API_ENDPOINT}/search",
                                         data={
                                             "text": search_term,
                                             "k": search_results,
-                                            "index":search_index
+                                            #index":search_index
+                                            "index":json.dumps(search_index)
                                             })
             if search_type == "Image":
                 search_bytes_data = search_uploaded_file.getvalue()
@@ -92,7 +94,8 @@ with tab2:
                                             },
                                         data={
                                             "k": search_results,
-                                            "index":search_index
+                                            #index":search_index
+                                            "index":json.dumps(search_index)
                                             })
         if response.status_code == 200:
             with st.spinner('Loading...'):
@@ -106,7 +109,7 @@ with tab2:
                     video_file = open(f'./tmp/segment_{str(i).zfill(3)}.mp4', 'rb')
                     video_bytes = video_file.read()
                     st.divider()
-                    st.write(f"segment_{str(i).zfill(3)}.mp4 Distance: {d['distance']}")
+                    st.write(f"Result #{i+1} - {'RRF: '+str(d['rrf']) if isinstance(d['rrf'], (int,float)) else ''} Distance: {d['distance']}")
                     if (d['video'] != ""):
                         st.video(video_bytes)
                     if 'identifier' in d:

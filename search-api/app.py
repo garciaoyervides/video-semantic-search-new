@@ -6,6 +6,7 @@ import os
 from upload import process_video_to_db
 import threading
 from databasechroma import get_logs,get_latest_log,get_video_list
+import json
 
 app = Flask(__name__,root_path='../')
 
@@ -13,8 +14,8 @@ app = Flask(__name__,root_path='../')
 def search_video():
     if request.method == 'POST':
         k = int(request.form['k'])
-        index = request.form['index']
-        #expand = request.form['expand']
+        #index = request.form['index']
+        index = json.loads(request.form['index'])
         if "text" in request.form:
             text = request.form['text']
         if 'file' in request.files:
@@ -40,8 +41,12 @@ def search_video():
                 distance = results['distances'][0][i]
                 time_range = (results['metadatas'][0][i]['start'],results['metadatas'][0][i]['end'])
                 transcript=results['metadatas'][0][i]['transcript']
-                #objects=results['metadatas'][0][i]['objects']
                 description=results['metadatas'][0][i]['description']
+                scene=results['metadatas'][0][i]['scene']
+                try:
+                    rrf=results['rrf'][0][i]
+                except:
+                    rrf = 'None'
                 try:
                     video = clip_video(video_name,time_range,f'segment_{str(i).zfill(3)}')
                     with open(video, "rb") as video_file:
@@ -53,10 +58,10 @@ def search_video():
                 response.append({
                 'distance': distance,
                 'video': encoded_string,
-                'identifier': f'Video: {video_name} Time: {h_seconds_to_timestamp(time_range[0])} -- {h_seconds_to_timestamp(time_range[1])}',
+                'identifier': f'Video: {video_name} Scene: {scene} Time: {h_seconds_to_timestamp(time_range[0])} -- {h_seconds_to_timestamp(time_range[1])}',
                 'transcript': f'Transcript: {transcript}',
-                #'objects': f'Objects: {objects}',
                 'description': f'{description}',
+                'rrf': rrf
                 })
                 
             

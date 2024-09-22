@@ -26,6 +26,7 @@ DB_LOCATION =   "../db"
 #Vicuna configuration
 MAX_TOKENS = 900
 LLM = "vicuna-13b-v1.5"
+#LLM = "vicuna:13b"
 
 #SETUP
 try:
@@ -60,12 +61,8 @@ try:
         api_key="EMPTY",
         base_url =VICUNA_API_ENDPOINT
         )
+
+    print(VICUNA_API_ENDPOINT)    
 except:
     print("Error connecting to Vicuna")
     exit()
-#try:
-#    torch.hub.set_dir("cache")
-#    yolo_model = torch.hub.load('ultralytics/yolov5','yolov5l6', pretrained=True)
-#except:
-#    print("Error loading Yolo model")
-#    exit()

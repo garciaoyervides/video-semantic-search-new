@@ -163,6 +163,7 @@ cython_debug/
 #Project specific
 venvs
 venv
+tmp
 *.out
 *.tar.gz
 
@@ -170,6 +171,7 @@ db/*
 !db/.gitkeep 
 cache/
 
+test.py
 search-api/*.out
 search-api/segment*.mp3
 search-api/__pycache__
@@ -179,6 +181,8 @@ search-api/tmp/*
 !search-api/tmp/img/
 search-api/tmp/img/*
 !search-api/tmp/img/.gitkeep
+search-api/eval/*
+search-api/*.tar
 search-api/videos/*
 !search-api/videos/.gitkeep
 !search-api/videos/tmp/

@@ -10,10 +10,11 @@ try:
     #device = "cpu"
     model, vis_processors, _ = load_model_and_preprocess(
         name="blip2_vicuna_instruct",
-    model_type="vicuna7b",
+        model_type="vicuna7b",
         is_eval=True,
         device=device)
     print(f"Loaded model to: {device}")
-except:
+except Exception as error:
+    print(error)
     print("Error loading LAVIS model")
     exit()
